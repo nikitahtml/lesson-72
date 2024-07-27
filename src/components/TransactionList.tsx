@@ -1,48 +1,64 @@
 import React, { useState } from 'react';
-import { Transaction } from '../redux/transactionsSlice';
 import TransactionItem from './TransactionItem';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../redux/store';
+import { deleteTransaction, Transaction } from '../redux/transactionsSlice';
+import EditTransactionModal from './EditTransactionModal';
 
-interface TransactionListProps {
-    transactions: Transaction[];
+interface TransactionListState {
+    filterDate: string;
+    editingTransaction: Transaction | null;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions }) => {
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-    const [filter, setFilter] = useState<string>('');
+const TransactionList: React.FC = () => {
+    const [state, setState] = useState<TransactionListState>({
+        filterDate: '',
+        editingTransaction: null
+    });
 
-    const filteredTransactions = transactions
-        .filter((transaction) => {
-            const description = transaction.description || '';
-            return description.toLowerCase().includes(filter.toLowerCase());
-        })
-        .sort((a, b) => {
-            if (sortOrder === 'asc') {
-                return a.amount - b.amount;
-            } else {
-                return b.amount - a.amount;
-            }
-        });
+    const transactions = useSelector((state: RootState) => state.transactions.transactions);
+    const dispatch = useDispatch();
+
+    const filteredTransactions = state.filterDate
+        ? transactions.filter(transaction => transaction.date === state.filterDate)
+        : transactions;
+
+    const handleEdit = (transaction: Transaction) => {
+        setState(prevState => ({ ...prevState, editingTransaction: transaction }));
+    };
+
+    const handleDelete = (id: string) => {
+        if (window.confirm('Are you sure you want to delete this transaction?')) {
+            dispatch(deleteTransaction(id));
+        }
+    };
+
+    const closeModal = () => {
+        setState(prevState => ({ ...prevState, editingTransaction: null }));
+    };
 
     return (
-        <div className="transaction-list">
-            <div className="filters">
-                <input
-                    type="text"
-                    placeholder="Filter by description"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
+        <div>
+            <input
+                type="date"
+                value={state.filterDate}
+                onChange={(e) => setState(prevState => ({ ...prevState, filterDate: e.target.value }))}
+            />
+            <ul className="transaction-list">
+                {filteredTransactions.map((transaction) => (
+                    <TransactionItem
+                        key={transaction.id}
+                        transaction={transaction}
+                        onEdit={() => handleEdit(transaction)}
+                        onDelete={() => handleDelete(transaction.id)}
+                    />
+                ))}
+            </ul>
+            {state.editingTransaction && (
+                <EditTransactionModal
+                    transaction={state.editingTransaction}
+                    onClose={closeModal}
                 />
-                <select onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}>
-                    <option value="desc">Sort by amount (desc)</option>
-                    <option value="asc">Sort by amount (asc)</option>
-                </select>
-            </div>
-            {filteredTransactions.length > 0 ? (
-                filteredTransactions.map((transaction) => (
-                    <TransactionItem key={transaction.id} transaction={transaction} />
-                ))
-            ) : (
-                <p>No transactions available</p>
             )}
         </div>
     );

@@ -6,19 +6,27 @@ import TransactionForm from '../components/TransactionForm';
 
 const MainPage: React.FC = () => {
     const dispatch = useDispatch();
-    const { transactions, loading, error } = useSelector((state: any) => state.transactions);
+    const status = useSelector((state: RootState) => state.transactions.loading);
+    const error = useSelector((state: RootState) => state.transactions.error);
 
     useEffect(() => {
         dispatch(fetchTransactions());
     }, [dispatch]);
 
+    let content;
+
+    if (status) {
+        content = <div>Loading...</div>;
+    } else if (error) {
+        content = <div>{error}</div>;
+    } else {
+        content = <TransactionList />;
+    }
+
     return (
-        <div className="main-page">
-            <h1>Transactions</h1>
+        <div>
             <TransactionForm />
-            {loading && <p>Loading...</p>}
-            {error && <p>Error: {error}</p>}
-            <TransactionList transactions={transactions} />
+            {content}
         </div>
     );
 };
